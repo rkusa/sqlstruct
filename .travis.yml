@@ -1,0 +1,15 @@
+language: go
+
+go:
+  - 1.5
+  - 1.6
+
+before_script:
+  - psql -c 'create database sqlstruct_test;' -U postgres
+
+script:
+  - go vet ./...
+  - go test -cover ./...
+
+services:
+  - postgresql

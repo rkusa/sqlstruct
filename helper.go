@@ -42,8 +42,7 @@ func Insert(db DB, tableName string, src interface{}) error {
 	values := table.Values(includePK, false)
 
 	if table.PK == nil {
-		_, err := db.Exec(query, values...)
-		if err != nil {
+		if _, err := db.Exec(query, values...); err != nil {
 			return err
 		}
 	} else {

@@ -11,11 +11,12 @@ const pkTag = "pk"
 const readonlyTag = "readonly"
 
 type column struct {
-	Type     reflect.Type
-	Value    reflect.Value
-	Name     string
-	Tags     map[string]bool
-	Embedded bool
+	Type      reflect.Type
+	Value     reflect.Value
+	Name      string
+	FieldName string
+	Tags      map[string]bool
+	Embedded  bool
 }
 
 type Table struct {
@@ -26,17 +27,11 @@ type Table struct {
 func (table *Table) ColumnsFiltered(includePK, includeReadonly bool) []*column {
 	columns := []*column{}
 	for _, col := range table.Columns {
-		if !includePK {
-			if _, isPK := col.Tags[pkTag]; isPK {
-				continue
-			}
+		if !includePK && col == table.PK {
+			continue
 		}
 
 		if !includeReadonly {
-			if col.Embedded {
-				continue
-			}
-
 			if _, isReadonly := col.Tags[readonlyTag]; isReadonly {
 				continue
 			}
@@ -59,7 +54,7 @@ func (table *Table) Names(includePK, includeReadonly bool) []string {
 func (table *Table) QuotedNames(includePK, includeReadonly bool) []string {
 	names := table.Names(includePK, includeReadonly)
 	for i, name := range names {
-		names[i] = quote(name)
+		names[i] = Quote(name)
 	}
 	return names
 }
@@ -77,17 +72,11 @@ func (table *Table) Len(includePK, includeReadonly bool) int {
 	length := 0
 
 	for _, col := range table.Columns {
-		if !includePK {
-			if _, isPK := col.Tags[pkTag]; isPK {
-				continue
-			}
+		if !includePK && col == table.PK {
+			continue
 		}
 
 		if !includeReadonly {
-			if col.Embedded {
-				continue
-			}
-
 			if _, isReadonly := col.Tags[readonlyTag]; isReadonly {
 				continue
 			}
@@ -151,23 +140,34 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 			if err != nil {
 				return nil, err
 			}
+
+			// prefix column names
+			prefix := nameOf(f, nameTag)
+			for _, c := range embedded.Columns {
+				c.Name = prefix + "_" + c.Name
+			}
+
 			table.Columns = append(table.Columns, embedded.Columns...)
-			table.PK = embedded.PK
+			if table.PK == nil && embedded.PK != nil {
+				table.PK = embedded.PK
+			}
 		} else if nameTag != "-" {
-			c := &column{ft, fv, nameOf(f, nameTag), tags, embedded}
+			c := &column{ft, fv, nameOf(f, nameTag), f.Name, tags, embedded}
 			table.Columns = append(table.Columns, c)
 			_, isPk := tags[pkTag]
-			if isPk || (table.PK == nil && !embedded && f.Name == "ID") {
+			if isPk || (table.PK == nil && f.Name == "ID") {
 				table.PK = c
 			}
 		}
 	}
 
-	if table.PK == nil {
-		return nil, fmt.Errorf("sqlstruct: no primary key set/found for %v", t)
-	}
+	if !embedded {
+		if table.PK == nil {
+			return nil, fmt.Errorf("sqlstruct: no primary key set/found for %v", t)
+		}
 
-	table.PK.Embedded = false
+		table.PK.Embedded = false
+	}
 
 	return table, nil
 }
