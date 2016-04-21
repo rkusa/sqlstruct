@@ -255,8 +255,6 @@ func QueryAll(db DB, dst interface{}, query string, args ...interface{}) error {
 
 		sliceVal.Set(reflect.Append(sliceVal, el))
 	}
-
-	return nil
 }
 
 func Quote(s string) string {
