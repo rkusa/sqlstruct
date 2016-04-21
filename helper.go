@@ -34,9 +34,9 @@ func Insert(db DB, tableName string, src interface{}) error {
 
 	query := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES (%s)",
-		quote(tableName),
+		Quote(tableName),
 		strings.Join(table.QuotedNames(includePK, false), ","),
-		strings.Join(placeholders(table.Len(includePK, false)), ","),
+		strings.Join(Placeholders(table.Len(includePK, false)), ","),
 	)
 
 	values := table.Values(includePK, false)
@@ -47,7 +47,7 @@ func Insert(db DB, tableName string, src interface{}) error {
 			return err
 		}
 	} else {
-		query += " RETURNING " + quote(table.PK.Name)
+		query += " RETURNING " + Quote(table.PK.Name)
 
 		err := db.QueryRow(query, values...).Scan(table.PK.Value.Addr().Interface())
 		if err != nil {
@@ -90,7 +90,7 @@ func Update(db DB, tableName string, src interface{}) error {
 	}
 
 	columns := table.QuotedNames(false, false)
-	placeholders := placeholders(table.Len(false, false))
+	placeholders := Placeholders(table.Len(false, false))
 
 	pairs := make([]string, len(columns))
 	for i, _ := range columns {
@@ -99,10 +99,10 @@ func Update(db DB, tableName string, src interface{}) error {
 
 	query := fmt.Sprintf(
 		"UPDATE %s SET %s WHERE %s=%s",
-		quote(tableName),
+		Quote(tableName),
 		strings.Join(pairs, ","),
-		quote(table.PK.Name),
-		placeholder(len(columns)+1),
+		Quote(table.PK.Name),
+		Placeholder(len(columns)+1),
 	)
 
 	values := append(table.Values(false, false), table.PK.Value.Interface())
@@ -126,9 +126,9 @@ func Delete(db DB, tableName string, src interface{}) error {
 
 	query := fmt.Sprintf(
 		"DELETE FROM %s WHERE %s=%s",
-		quote(tableName),
-		quote(table.PK.Name),
-		placeholder(1),
+		Quote(tableName),
+		Quote(table.PK.Name),
+		Placeholder(1),
 	)
 
 	if _, err := db.Exec(query, table.PK.Value.Interface()); err != nil {
@@ -151,9 +151,9 @@ func Load(db DB, tableName string, dst interface{}, key interface{}) error {
 	query := fmt.Sprintf(
 		"SELECT %s FROM %s WHERE %s = %s",
 		strings.Join(table.QuotedNames(true, true), ","),
-		quote(tableName),
-		quote(table.PK.Name),
-		placeholder(1),
+		Quote(tableName),
+		Quote(table.PK.Name),
+		Placeholder(1),
 	)
 
 	values := table.Values(true, true)
@@ -260,18 +260,18 @@ func QueryAll(db DB, dst interface{}, query string, args ...interface{}) error {
 	return nil
 }
 
-func quote(s string) string {
+func Quote(s string) string {
 	return `"` + s + `"`
 }
 
-func placeholder(n int) string {
+func Placeholder(n int) string {
 	return "$" + strconv.Itoa(n)
 }
 
-func placeholders(count int) []string {
+func Placeholders(count int) []string {
 	placeholders := make([]string, count)
 	for i := 0; i < count; i++ {
-		placeholders[i] = placeholder(i + 1)
+		placeholders[i] = Placeholder(i + 1)
 	}
 	return placeholders
 }
