@@ -32,11 +32,12 @@ func Insert(db DB, tableName string, src interface{}) error {
 		}
 	}
 
+	names := table.QuotedNames(includePK, false)
 	query := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES (%s)",
 		Quote(tableName),
-		strings.Join(table.QuotedNames(includePK, false), ","),
-		strings.Join(Placeholders(table.Len(includePK, false)), ","),
+		strings.Join(names, ","),
+		strings.Join(Placeholders(len(names)), ","),
 	)
 
 	values := table.Values(includePK, false)
@@ -89,7 +90,7 @@ func Update(db DB, tableName string, src interface{}) error {
 	}
 
 	columns := table.QuotedNames(false, false)
-	placeholders := Placeholders(table.Len(false, false))
+	placeholders := Placeholders(len(columns))
 
 	pairs := make([]string, len(columns))
 	for i, _ := range columns {

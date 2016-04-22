@@ -68,26 +68,6 @@ func (table *Table) Values(includePK, includeReadonly bool) []interface{} {
 	return values
 }
 
-func (table *Table) Len(includePK, includeReadonly bool) int {
-	length := 0
-
-	for _, col := range table.Columns {
-		if !includePK && col == table.PK {
-			continue
-		}
-
-		if !includeReadonly {
-			if _, isReadonly := col.Tags[readonlyTag]; isReadonly {
-				continue
-			}
-		}
-
-		length++
-	}
-
-	return length
-}
-
 func ExtractTable(s interface{}) (*Table, error) {
 	t := reflect.TypeOf(s)
 
