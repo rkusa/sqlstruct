@@ -92,7 +92,7 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 	}
 
 	table := &Table{}
-	var idCol *column
+	var pkCol, embeddedPK *column
 
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
@@ -110,7 +110,8 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 
 		nameTag, tags := stripTag(f)
 
-		if ft.Kind() == reflect.Struct && nameTag == "" { // embedded struct
+		// TODO: distinguish between Fields and embeded structs
+		if ft.Kind() == reflect.Struct { // embedded struct
 			if !fv.IsValid() { // eg. is nil
 				// init embedded struct
 				fv = reflect.New(ft)
@@ -129,8 +130,8 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 			}
 
 			table.Columns = append(table.Columns, embedded.Columns...)
-			if table.PK == nil && embedded.PK != nil {
-				table.PK = embedded.PK
+			if embeddedPK == nil && embedded.PK != nil {
+				embeddedPK = embedded.PK
 			}
 		} else if nameTag != "-" {
 			c := &column{ft, fv, nameOf(f, nameTag), f.Name, tags, embedded}
@@ -143,19 +144,23 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 				table.PK = c
 			}
 
-			if idCol == nil && f.Name == "ID" {
-				idCol = c
+			if pkCol == nil && f.Name == "ID" {
+				pkCol = c
 			}
 		}
 	}
 
+	if table.PK == nil && pkCol != nil {
+		table.PK = pkCol
+	}
+
+	if table.PK == nil && embeddedPK != nil {
+		table.PK = embeddedPK
+	}
+
 	if !embedded {
 		if table.PK == nil {
-			if idCol != nil {
-				table.PK = idCol
-			} else {
-				return nil, fmt.Errorf("sqlstruct: no primary key set/found for %v", t)
-			}
+			return nil, fmt.Errorf("sqlstruct: no primary key set/found for %v", t)
 		}
 
 		table.PK.Embedded = false

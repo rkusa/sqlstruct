@@ -145,9 +145,152 @@ func TestEmbedded(t *testing.T) {
 	}
 }
 
-// TODO: multiple PK tags because of embedded struct
-// TODO: name tags
-// TODO: name tages embedded
+func TestEmbeddedPK(t *testing.T) {
+	type Admin struct {
+		User struct {
+			ID int
+		}
+	}
+
+	table, err := ExtractTable(&Admin{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.PK == nil {
+		t.Fatalf("No PK extracted")
+	}
+}
+
+func TestEmbeddedPKTag(t *testing.T) {
+	type Admin struct {
+		User struct {
+			UserID int `sql:",pk"`
+		}
+	}
+
+	table, err := ExtractTable(&Admin{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.PK == nil {
+		t.Fatalf("No PK extracted")
+	}
+}
+
+func TestEmbeddedPKPreceding1(t *testing.T) {
+	type Admin struct {
+		ID   int
+		User struct {
+			ID int
+		}
+	}
+
+	table, err := ExtractTable(&Admin{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.PK == nil {
+		t.Fatalf("No PK extracted")
+	}
+
+	if table.PK.Name != "id" {
+		t.Fatal("Root ID must precede embedded ID")
+	}
+}
+
+func TestEmbeddedPKPreceding2(t *testing.T) {
+	type Admin struct {
+		User struct {
+			ID int
+		}
+		ID int
+	}
+
+	table, err := ExtractTable(&Admin{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.PK == nil {
+		t.Fatalf("No PK extracted")
+	}
+
+	if table.PK.Name != "id" {
+		t.Fatal("Root ID must precede embedded ID")
+	}
+}
+
+func TestNameTag(t *testing.T) {
+	type User struct {
+		ID        int
+		Firstname string `sql:"forename"`
+	}
+
+	table, err := ExtractTable(&User{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.Columns[1].Name != "forename" {
+		t.Errorf("Name=%v; wanted forename", table.Columns[1].Name)
+	}
+}
+
+func TestPKNameTag(t *testing.T) {
+	type User struct {
+		ID int `sql:"user_id,pk"`
+	}
+
+	table, err := ExtractTable(&User{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.PK.Name != "user_id" {
+		t.Errorf("Name=%v; wanted user_id", table.PK.Name)
+	}
+}
+
+func TestEmbeddedNameTag1(t *testing.T) {
+	type Admin struct {
+		ID   int
+		User struct {
+			Firstname string `sql:"forename"`
+		}
+	}
+
+	table, err := ExtractTable(&Admin{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.Columns[1].Name != "user_forename" {
+		t.Errorf("Name=%v; wanted user_forename", table.Columns[1].Name)
+	}
+}
+
+func TestEmbeddedNameTag2(t *testing.T) {
+	type Admin struct {
+		ID   int
+		User struct {
+			Name string
+		} `sql:"u"`
+	}
+
+	table, err := ExtractTable(&Admin{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.Columns[1].Name != "u_name" {
+		t.Errorf("Name=%v; wanted u_name", table.Columns[1].Name)
+	}
+}
+
+// TODO: allow oredinary structs
 
 func TestColumnsFiltered(t *testing.T) {
 
