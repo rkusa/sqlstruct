@@ -92,6 +92,7 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 	}
 
 	table := &Table{}
+	var idCol *column
 
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
@@ -135,15 +136,26 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 			c := &column{ft, fv, nameOf(f, nameTag), f.Name, tags, embedded}
 			table.Columns = append(table.Columns, c)
 			_, isPk := tags[pkTag]
-			if isPk || (table.PK == nil && f.Name == "ID") {
+			if isPk {
+				if table.PK != nil {
+					return nil, fmt.Errorf("sqlstruct: multiple PK tags found")
+				}
 				table.PK = c
+			}
+
+			if idCol == nil && f.Name == "ID" {
+				idCol = c
 			}
 		}
 	}
 
 	if !embedded {
 		if table.PK == nil {
-			return nil, fmt.Errorf("sqlstruct: no primary key set/found for %v", t)
+			if idCol != nil {
+				table.PK = idCol
+			} else {
+				return nil, fmt.Errorf("sqlstruct: no primary key set/found for %v", t)
+			}
 		}
 
 		table.PK.Embedded = false
