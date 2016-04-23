@@ -133,7 +133,7 @@ func TestEmbedded(t *testing.T) {
 	}
 
 	if table.Columns[2].Name != "address_street" {
-		t.Errorf("Name=%v; wanted %s", table.Columns[2].Name)
+		t.Errorf("Name=%v; wanted address_street", table.Columns[2].Name)
 	}
 
 	if table.Columns[3].FieldName != "City" {
@@ -141,7 +141,7 @@ func TestEmbedded(t *testing.T) {
 	}
 
 	if table.Columns[3].Name != "address_city" {
-		t.Errorf("Name=%v; wanted %s", table.Columns[3].Name)
+		t.Errorf("Name=%v; wanted address_city", table.Columns[3].Name)
 	}
 }
 
