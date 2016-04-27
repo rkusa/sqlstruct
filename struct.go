@@ -111,7 +111,7 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 		nameTag, tags := stripTag(f)
 
 		// TODO: distinguish between Fields and embeded structs
-		if ft.Kind() == reflect.Struct { // embedded struct
+		if f.Anonymous { // embedded struct
 			if !fv.IsValid() { // eg. is nil
 				// init embedded struct
 				fv = reflect.New(ft)

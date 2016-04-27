@@ -106,13 +106,14 @@ func TestPKTagPreceding(t *testing.T) {
 }
 
 func TestEmbedded(t *testing.T) {
+	type Address struct {
+		Street string
+		City   string
+	}
 	type User struct {
-		ID      int
-		Name    string
-		Address struct {
-			Street string
-			City   string
-		}
+		ID   int
+		Name string
+		Address
 	}
 
 	table, err := ExtractTable(&User{})
@@ -146,10 +147,11 @@ func TestEmbedded(t *testing.T) {
 }
 
 func TestEmbeddedPK(t *testing.T) {
+	type User struct {
+		ID int
+	}
 	type Admin struct {
-		User struct {
-			ID int
-		}
+		User
 	}
 
 	table, err := ExtractTable(&Admin{})
@@ -163,10 +165,11 @@ func TestEmbeddedPK(t *testing.T) {
 }
 
 func TestEmbeddedPKTag(t *testing.T) {
+	type User struct {
+		UserID int `sql:",pk"`
+	}
 	type Admin struct {
-		User struct {
-			UserID int `sql:",pk"`
-		}
+		User
 	}
 
 	table, err := ExtractTable(&Admin{})
@@ -180,11 +183,12 @@ func TestEmbeddedPKTag(t *testing.T) {
 }
 
 func TestEmbeddedPKPreceding1(t *testing.T) {
+	type User struct {
+		ID int
+	}
 	type Admin struct {
-		ID   int
-		User struct {
-			ID int
-		}
+		ID int
+		User
 	}
 
 	table, err := ExtractTable(&Admin{})
@@ -202,10 +206,11 @@ func TestEmbeddedPKPreceding1(t *testing.T) {
 }
 
 func TestEmbeddedPKPreceding2(t *testing.T) {
+	type User struct {
+		ID int
+	}
 	type Admin struct {
-		User struct {
-			ID int
-		}
+		User
 		ID int
 	}
 
@@ -255,11 +260,12 @@ func TestPKNameTag(t *testing.T) {
 }
 
 func TestEmbeddedNameTag1(t *testing.T) {
+	type User struct {
+		Firstname string `sql:"forename"`
+	}
 	type Admin struct {
-		ID   int
-		User struct {
-			Firstname string `sql:"forename"`
-		}
+		ID int
+		User
 	}
 
 	table, err := ExtractTable(&Admin{})
@@ -273,11 +279,12 @@ func TestEmbeddedNameTag1(t *testing.T) {
 }
 
 func TestEmbeddedNameTag2(t *testing.T) {
+	type User struct {
+		Name string
+	}
 	type Admin struct {
 		ID   int
-		User struct {
-			Name string
-		} `sql:"u"`
+		User `sql:"u"`
 	}
 
 	table, err := ExtractTable(&Admin{})
@@ -290,7 +297,44 @@ func TestEmbeddedNameTag2(t *testing.T) {
 	}
 }
 
-// TODO: allow oredinary structs
+func TestEmbeddedNameTag3(t *testing.T) {
+	type User struct {
+		Name string `sql:"forename"`
+	}
+	type Admin struct {
+		ID   int
+		User `sql:"u"`
+	}
+
+	table, err := ExtractTable(&Admin{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.Columns[1].Name != "u_forename" {
+		t.Errorf("Name=%v; wanted u_forename", table.Columns[1].Name)
+	}
+}
+
+func TestNonEmbeddedStructs(t *testing.T) {
+	type S struct {
+		Val string
+	}
+
+	type User struct {
+		ID int
+		S  S
+	}
+
+	table, err := ExtractTable(&User{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.Columns[1].Name != "s" {
+		t.Errorf("Name=%v; wanted s", table.Columns[1].Name)
+	}
+}
 
 func TestColumnsFiltered(t *testing.T) {
 
