@@ -7,11 +7,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// TODO: test pk tag
-// TODO: test pk readonly
-// TODO: test name tag
-// TODO: test embedded struct with tag name
-// TODO: test embedded struct without prefix
 // TODO: test load all
 // TODO: test QueryRow
 // TODO: test QueryAll

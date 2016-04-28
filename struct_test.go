@@ -336,18 +336,30 @@ func TestNonEmbeddedStructs(t *testing.T) {
 	}
 }
 
-func TestColumnsFiltered(t *testing.T) {
+func TestReadonlyTest(t *testing.T) {
+	type Embedded struct {
+		Name     string
+		Readonly bool `sql:",readonly"`
+	}
 
-}
+	type Test struct {
+		ID int
+		Embedded
+		OtherReadonly int `sql:",readonly"`
+	}
 
-func TestNames(t *testing.T) {
+	table, err := ExtractTable(&Test{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-}
+	names := table.Names(false, true)
+	if len(names) != 3 {
+		t.Errorf("Expected to to include readonly names")
+	}
 
-func TestQuotedNames(t *testing.T) {
-
-}
-
-func TestValues(t *testing.T) {
-
+	names = table.Names(false, false)
+	if len(names) != 1 {
+		t.Errorf("Expected to skip readonly names")
+	}
 }
