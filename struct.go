@@ -125,8 +125,14 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 
 			// prefix column names
 			prefix := nameOf(f, nameTag)
+			if prefix == "_" {
+				prefix = ""
+			} else {
+				prefix += "_"
+			}
+
 			for _, c := range embedded.Columns {
-				c.Name = prefix + "_" + c.Name
+				c.Name = prefix + c.Name
 			}
 
 			table.Columns = append(table.Columns, embedded.Columns...)

@@ -316,6 +316,25 @@ func TestEmbeddedNameTag3(t *testing.T) {
 	}
 }
 
+func TestEmbeddedNameTag4(t *testing.T) {
+	type User struct {
+		Name string `sql:"forename"`
+	}
+	type Admin struct {
+		ID   int
+		User `sql:"_"`
+	}
+
+	table, err := ExtractTable(&Admin{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table.Columns[1].Name != "forename" {
+		t.Errorf("Name=%v; wanted forename", table.Columns[1].Name)
+	}
+}
+
 func TestNonEmbeddedStructs(t *testing.T) {
 	type S struct {
 		Val string
