@@ -12,16 +12,16 @@ func TestIDPK(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) != 1 {
 		t.Fatalf("Didn't detected field ID as PK automatically")
 	}
 
-	if table.PK.FieldName != "ID" {
-		t.Errorf("PK FieldName=%v; wanted ID", table.PK.FieldName)
+	if table.PKs[0].FieldName != "ID" {
+		t.Errorf("PK FieldName=%v; wanted ID", table.PKs[0].FieldName)
 	}
 
-	if table.PK.Name != "id" {
-		t.Errorf("PK Name=%v; wanted id", table.PK.Name)
+	if table.PKs[0].Name != "id" {
+		t.Errorf("PK Name=%v; wanted id", table.PKs[0].Name)
 	}
 }
 
@@ -56,16 +56,16 @@ func TestPKTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) != 1 {
 		t.Fatalf("No PK extracted")
 	}
 
-	if table.PK.FieldName != "UserID" {
-		t.Errorf("PK FieldName=%v; wanted UserID", table.PK.FieldName)
+	if table.PKs[0].FieldName != "UserID" {
+		t.Errorf("PK FieldName=%v; wanted UserID", table.PKs[0].FieldName)
 	}
 
-	if table.PK.Name != "userid" {
-		t.Errorf("PK Name=%v; wanted userid", table.PK.Name)
+	if table.PKs[0].Name != "userid" {
+		t.Errorf("PK Name=%v; wanted userid", table.PKs[0].Name)
 	}
 }
 
@@ -75,13 +75,21 @@ func TestMultiplePKTags(t *testing.T) {
 		UserID int `sql:",pk"`
 	}
 
-	_, err := ExtractTable(&User{})
-	if err == nil {
-		t.Fatalf("Expected to throw, because of multiple PK tags")
+	table, err := ExtractTable(&User{})
+	if err != nil {
+		t.Fatalf("Should not throw on multiple PK tags")
 	}
 
-	if err.Error() != "sqlstruct: multiple PK tags found" {
-		t.Fatalf("Expected to throw `sqlstruct: multiple PK tags found`; got %v", err)
+	if len(table.PKs) != 2 {
+		t.Fatalf("Expected 2 PKs")
+	}
+
+	if table.PKs[0].Name != "id" {
+		t.Errorf("PK Name=%v; wanted id", table.PKs[0].Name)
+	}
+
+	if table.PKs[1].Name != "userid" {
+		t.Errorf("PK Name=%v; wanted userid", table.PKs[1].Name)
 	}
 }
 
@@ -96,11 +104,11 @@ func TestPKTagPreceding(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) != 1 {
 		t.Fatalf("No PK extracted")
 	}
 
-	if table.PK.FieldName != "UserID" {
+	if table.PKs[0].FieldName != "UserID" {
 		t.Errorf("Expected PK tag to precede ID field")
 	}
 }
@@ -159,7 +167,7 @@ func TestEmbeddedPK(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) == 0 {
 		t.Fatalf("No PK extracted")
 	}
 }
@@ -177,7 +185,7 @@ func TestEmbeddedPKTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) == 0 {
 		t.Fatalf("No PK extracted")
 	}
 }
@@ -196,11 +204,11 @@ func TestEmbeddedPKPreceding1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) != 1 {
 		t.Fatalf("No PK extracted")
 	}
 
-	if table.PK.Name != "id" {
+	if table.PKs[0].Name != "id" {
 		t.Fatal("Root ID must precede embedded ID")
 	}
 }
@@ -219,11 +227,11 @@ func TestEmbeddedPKPreceding2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) != 1 {
 		t.Fatalf("No PK extracted")
 	}
 
-	if table.PK.Name != "id" {
+	if table.PKs[0].Name != "id" {
 		t.Fatal("Root ID must precede embedded ID")
 	}
 }
@@ -254,8 +262,8 @@ func TestPKNameTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if table.PK.Name != "user_id" {
-		t.Errorf("Name=%v; wanted user_id", table.PK.Name)
+	if table.PKs[0].Name != "user_id" {
+		t.Errorf("Name=%v; wanted user_id", table.PKs[0].Name)
 	}
 }
 
