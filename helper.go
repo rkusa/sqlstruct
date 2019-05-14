@@ -23,12 +23,19 @@ func Insert(db DB, tableName string, src interface{}) error {
 
 	includePK := true
 
-	if table.PK != nil {
-		switch table.PK.Type.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			includePK = table.PK.Value.Int() > 0
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			includePK = table.PK.Value.Uint() > 0
+	if len(table.PKs) > 0 {
+		// TODO: allow including some of the pks?
+		for _, pk := range table.PKs {
+			switch pk.Type.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				if pk.Value.Int() == 0 {
+					includePK = false
+				}
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				if pk.Value.Uint() == 0 {
+					includePK = false
+				}
+			}
 		}
 	}
 
@@ -42,14 +49,23 @@ func Insert(db DB, tableName string, src interface{}) error {
 
 	values := table.Values(includePK, false)
 
-	if table.PK == nil {
+	if len(table.PKs) == 0 {
 		if _, err := db.Exec(query, values...); err != nil {
 			return err
 		}
 	} else {
-		query += " RETURNING " + Quote(table.PK.Name)
+		query += " RETURNING"
+		var returns []interface{}
 
-		err := db.QueryRow(query, values...).Scan(table.PK.Value.Addr().Interface())
+		for i, pk := range table.PKs {
+			if i > 0 {
+				query += ","
+			}
+			query += Quote(pk.Name)
+			returns = append(returns, pk.Value.Addr().Interface())
+		}
+
+		err := db.QueryRow(query, values...).Scan(returns...)
 		if err != nil {
 			return err
 		}
@@ -85,7 +101,7 @@ func Update(db DB, tableName string, src interface{}) error {
 		return err
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) == 0 {
 		return fmt.Errorf("sqlstruct.Update: primary key column required")
 	}
 
@@ -97,15 +113,26 @@ func Update(db DB, tableName string, src interface{}) error {
 		pairs[i] = fmt.Sprintf("%s=%s", columns[i], placeholders[i])
 	}
 
+	sql := "UPDATE %s SET %s WHERE"
+	args := []interface{}{Quote(tableName), strings.Join(pairs, ",")}
+	var pks []interface{}
+
+	for i, pk := range table.PKs {
+		if i > 0 {
+			sql += "AND "
+		}
+		sql += " %s=%s"
+		args = append(args, Quote(pk.Name))
+		args = append(args, Placeholder(len(columns)+1+i))
+		pks = append(pks, pk.Value.Interface())
+	}
+
 	query := fmt.Sprintf(
-		"UPDATE %s SET %s WHERE %s=%s",
-		Quote(tableName),
-		strings.Join(pairs, ","),
-		Quote(table.PK.Name),
-		Placeholder(len(columns)+1),
+		sql,
+		args...,
 	)
 
-	values := append(table.Values(false, false), table.PK.Value.Interface())
+	values := append(table.Values(false, false), pks...)
 
 	if _, err := db.Exec(query, values...); err != nil {
 		return err
@@ -120,18 +147,30 @@ func Delete(db DB, tableName string, src interface{}) error {
 		return err
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) == 0 {
 		return fmt.Errorf("sqlstruct.Delete: primary key column required")
 	}
 
+	sql := "DELETE FROM %s WHERE"
+	args := []interface{}{Quote(tableName)}
+	var values []interface{}
+
+	for i, pk := range table.PKs {
+		if i > 0 {
+			sql += "AND "
+		}
+		sql += " %s=%s"
+		args = append(args, Quote(pk.Name))
+		args = append(args, Placeholder(1+i))
+		values = append(values, pk.Value.Interface())
+	}
+
 	query := fmt.Sprintf(
-		"DELETE FROM %s WHERE %s=%s",
-		Quote(tableName),
-		Quote(table.PK.Name),
-		Placeholder(1),
+		sql,
+		args...,
 	)
 
-	if _, err := db.Exec(query, table.PK.Value.Interface()); err != nil {
+	if _, err := db.Exec(query, values...); err != nil {
 		return err
 	}
 
@@ -144,16 +183,24 @@ func Load(db DB, tableName string, dst interface{}, key interface{}) error {
 		return err
 	}
 
-	if table.PK == nil {
+	if len(table.PKs) == 0 {
 		return fmt.Errorf("sqlstruct.Load: primary key column required")
 	}
 
+	sql := "SELECT %s FROM %s WHERE"
+	args := []interface{}{strings.Join(table.QuotedNames(true, true), ","), Quote(tableName)}
+
+	for i, pk := range table.PKs {
+		if i > 0 {
+			sql += "AND "
+		}
+		sql += " %s=%s"
+		args = append(args, Quote(pk.Name))
+		args = append(args, Placeholder(1+i))
+	}
+
 	query := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = %s",
-		strings.Join(table.QuotedNames(true, true), ","),
-		Quote(tableName),
-		Quote(table.PK.Name),
-		Placeholder(1),
+		sql, args...,
 	)
 
 	values := table.Values(true, true)

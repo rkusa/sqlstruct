@@ -21,14 +21,19 @@ type column struct {
 
 type Table struct {
 	Columns []*column
-	PK      *column
+	PKs     []*column
 }
 
 func (table *Table) ColumnsFiltered(includePK, includeReadonly bool) []*column {
 	columns := []*column{}
+outer:
 	for _, col := range table.Columns {
-		if !includePK && col == table.PK {
-			continue
+		if !includePK {
+			for _, pk := range table.PKs {
+				if pk == col {
+					continue outer
+				}
+			}
 		}
 
 		if !includeReadonly {
@@ -92,7 +97,8 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 	}
 
 	table := &Table{}
-	var pkCol, embeddedPK *column
+	var pkCol *column
+	var embeddedPKs []*column
 
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
@@ -136,18 +142,15 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 			}
 
 			table.Columns = append(table.Columns, embedded.Columns...)
-			if embeddedPK == nil && embedded.PK != nil {
-				embeddedPK = embedded.PK
+			if embeddedPKs == nil && len(embedded.PKs) != 0 {
+				embeddedPKs = embedded.PKs
 			}
 		} else if nameTag != "-" {
 			c := &column{ft, fv, nameOf(f, nameTag), f.Name, tags, embedded}
 			table.Columns = append(table.Columns, c)
 			_, isPk := tags[pkTag]
 			if isPk {
-				if table.PK != nil {
-					return nil, fmt.Errorf("sqlstruct: multiple PK tags found")
-				}
-				table.PK = c
+				table.PKs = append(table.PKs, c)
 			}
 
 			if pkCol == nil && f.Name == "ID" {
@@ -156,20 +159,22 @@ func fields(v reflect.Value, embedded bool) (*Table, error) {
 		}
 	}
 
-	if table.PK == nil && pkCol != nil {
-		table.PK = pkCol
+	if len(table.PKs) == 0 && pkCol != nil {
+		table.PKs = append(table.PKs, pkCol)
 	}
 
-	if table.PK == nil && embeddedPK != nil {
-		table.PK = embeddedPK
+	if len(table.PKs) == 0 && len(embeddedPKs) > 0 {
+		table.PKs = append(table.PKs, embeddedPKs...)
 	}
 
 	if !embedded {
-		if table.PK == nil {
+		if len(table.PKs) == 0 {
 			return nil, fmt.Errorf("sqlstruct: no primary key set/found for %v", t)
 		}
 
-		table.PK.Embedded = false
+		for _, c := range table.PKs {
+			c.Embedded = false
+		}
 	}
 
 	return table, nil
